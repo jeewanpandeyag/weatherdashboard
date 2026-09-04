@@ -1,5 +1,8 @@
 name: Update weather dashboard
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "15 13 * * *"
   workflow_dispatch:
