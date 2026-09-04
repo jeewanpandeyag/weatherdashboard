@@ -1,4 +1,4 @@
-# FieldClimate — UC Davis Weather Dashboard
+# FieldClimate — Davis Weather Dashboard
 
 An original agricultural weather dashboard combining:
 
@@ -34,4 +34,4 @@ Dashboard code is released under the MIT License. Weather data remain subject to
 
 ## Live website
 
-[Open the UC Davis Weather Dashboard](https://jeewanpandeyag.github.io/weatherdashboard/)
+[Open the Davis Weather Dashboard](https://jeewanpandeyag.github.io/weatherdashboard/)
