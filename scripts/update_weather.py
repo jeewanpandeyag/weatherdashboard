@@ -10,17 +10,17 @@ def fetch(url):
     req=urllib.request.Request(url,headers=UA)
     with urllib.request.urlopen(req,timeout=90) as r:return r.read()
 def recent_sensor(name,days=370):
-    raw=fetch(UCD+name+".zip"); cutoff=(datetime.now()-timedelta(days=days)).date(); out=[]
+    raw=fetch(UCD+name+".zip"); cutoff=(datetime.now()-timedelta(days=days)).date() if days else None; out=[]
     with zipfile.ZipFile(io.BytesIO(raw)) as z, z.open(z.namelist()[0]) as f:
         for row in csv.reader(io.TextIOWrapper(f)):
             if len(row)<4:continue
             try:dt=datetime.strptime(row[3],"%Y-%m-%d %H:%M:%S");val=float(row[2])
             except ValueError:continue
-            if dt.date()<cutoff:break
+            if cutoff and dt.date()<cutoff:break
             out.append((dt,val))
     return out
-def daily_history():
-    temps=recent_sensor("CT_Ta2m"); rain=recent_sensor("CT_Rain_mm"); by=defaultdict(lambda:{"temps":[],"rainmm":0})
+def daily_history(rain_all):
+    temps=recent_sensor("CT_Ta2m"); cutoff=(datetime.now()-timedelta(days=370)).date(); rain=[(d,v) for d,v in rain_all if d.date()>=cutoff]; by=defaultdict(lambda:{"temps":[],"rainmm":0})
     for d,v in temps:by[d.date().isoformat()]["temps"].append(v)
     for d,v in rain:by[d.date().isoformat()]["rainmm"]+=max(v,0)
     rows=[]
@@ -43,13 +43,18 @@ def noaa_forecast():
         if r["low"] is None:r["low"]=r["high"]
         r["gdd"]=round(max(0,(r["high"]+r["low"])/2-50),1);r["summary"]=" / ".join(r["summary"]);rows.append(r)
     return rows[:7]
-def monthly(rows):
-    by=defaultdict(float)
-    for r in rows:by[r["date"][:7]]+=r["rain"]
-    return [{"month":datetime.strptime(k,"%Y-%m").strftime("%b"),"rain":round(v,2)} for k,v in sorted(by.items())[-12:]]
+def monthly_comparison(rain_records):
+    totals=defaultdict(float)
+    for d,v in rain_records:totals[(d.year,d.month)]+=max(v,0)/25.4
+    current_year=datetime.now().year; rows=[]
+    for month in range(1,13):
+        historic=[value for (year,m),value in totals.items() if m==month and year<current_year]
+        current=totals.get((current_year,month))
+        rows.append({"month":datetime(2000,month,1).strftime("%b"),"current":round(current,2) if current is not None else None,"historical":round(sum(historic)/len(historic),2) if historic else None,"years":len(historic)})
+    return rows
 def main():
-    history=daily_history();forecast=noaa_forecast();current={"temperatureF":history[-1]["high"],"timestamp":history[-1]["date"]}
-    data={"location":{"name":"UC Davis Campbell Tract","latitude":LAT,"longitude":LON},"updatedAt":datetime.now(timezone.utc).isoformat(),"current":current,"history":history,"forecast":forecast,"monthly":monthly(history),"sources":{"observed":"UC Davis Weather & Climate Station archive","forecast":"NOAA / National Weather Service API"}}
+    rain_all=recent_sensor("CT_Rain_mm",days=None);history=daily_history(rain_all);forecast=noaa_forecast();current={"temperatureF":history[-1]["high"],"timestamp":history[-1]["date"]}
+    data={"location":{"name":"UC Davis Campbell Tract","latitude":LAT,"longitude":LON},"updatedAt":datetime.now(timezone.utc).isoformat(),"current":current,"history":history,"forecast":forecast,"monthly":monthly_comparison(rain_all),"sources":{"observed":"UC Davis Weather & Climate Station archive","forecast":"NOAA / National Weather Service API"}}
     os.makedirs(os.path.dirname(OUT),exist_ok=True)
     with open(OUT,"w") as f:json.dump(data,f,separators=(",",":"))
 if __name__=="__main__":main()
