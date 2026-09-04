@@ -31,3 +31,7 @@ Open **Settings → Pages → Build and deployment**, then select **GitHub Actio
 ## License
 
 Dashboard code is released under the MIT License. Weather data remain subject to their source terms and attribution.
+
+## Live website
+
+[Open the UC Davis Weather Dashboard](https://jeewanpandeyag.github.io/weatherdashboard/)
