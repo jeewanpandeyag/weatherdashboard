@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import csv, io, json, os, tempfile, urllib.request, zipfile
+from urllib.parse import urlencode
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__))); OUT=os.path.join(ROOT,"data","weather.json")
 UCD="https://apps.atm.ucdavis.edu/wxdata/data/"; LAT,LON=38.5353,-121.7733
 UA={"User-Agent":"FieldClimate weatherdashboard (github.com/jeewanpandeyag/weatherdashboard)"}
-def fetch(url):
-    req=urllib.request.Request(url,headers=UA)
+def fetch(url,headers=None):
+    req=urllib.request.Request(url,headers={**UA,**(headers or {})})
     with urllib.request.urlopen(req,timeout=90) as r:return r.read()
 def recent_sensor(name,days=370):
     raw=fetch(UCD+name+".zip"); cutoff=(datetime.now()-timedelta(days=days)).date() if days else None; out=[]
@@ -45,6 +46,29 @@ def noaa_forecast():
         if r["low"] is None:r["low"]=r["high"]
         r["gdd"]=round(max(0,(r["high"]+r["low"])/2-50),1);r["summary"]=" / ".join(r["summary"]);rows.append(r)
     return rows[:7]
+def compass(degrees):
+    names=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"]
+    return names[round(degrees/22.5)%16]
+def cimis_current():
+    key=os.getenv("CIMIS_APP_KEY")
+    if not key:return None
+    today=datetime.now().date();start=today-timedelta(days=1)
+    params=urlencode({"appKey":key,"targets":"6","startDate":start.isoformat(),"endDate":today.isoformat(),"dataItems":"hly-air-tmp,hly-wind-spd,hly-wind-dir","unitOfMeasure":"E"})
+    try:data=json.loads(fetch("https://et.water.ca.gov/api/data?"+params,{"Accept":"application/json"}))
+    except Exception as exc:
+        print("CIMIS request failed:",exc);return None
+    records=[]
+    for provider in data.get("Data",{}).get("Providers",[]):
+        for record in provider.get("Records",[]):
+            if record.get("Scope")=="hourly" and record.get("HlyAirTmp",{}).get("Value"):records.append(record)
+    if not records:return None
+    latest=max(records,key=lambda r:(r.get("Date",""),r.get("Hour","")))
+    def value(name):
+        try:return float(latest.get(name,{}).get("Value"))
+        except (TypeError,ValueError):return None
+    temp=value("HlyAirTmp");speed=value("HlyWindSpd");direction=value("HlyWindDir");hour=latest.get("Hour","")
+    clock=(hour[:2]+":"+hour[2:]) if len(hour)==4 else hour
+    return {"temperatureF":round(temp,1),"date":latest["Date"],"recordedAt":latest["Date"]+" "+clock,"windMph":round(speed,1) if speed is not None else None,"windDirectionDeg":round(direction) if direction is not None else None,"windDirection":compass(direction) if direction is not None else None,"source":"CIMIS Station 6 — Davis"}
 def monthly_comparison(rain_records):
     totals=defaultdict(float)
     for d,v in rain_records:totals[(d.year,d.month)]+=max(v,0)/25.4
@@ -55,7 +79,7 @@ def monthly_comparison(rain_records):
         rows.append({"month":datetime(2000,month,1).strftime("%b"),"current":round(current,2) if current is not None else None,"historical":round(sum(historic)/len(historic),2) if historic else None,"years":len(historic)})
     return rows
 def main():
-    rain_all=recent_sensor("CT_Rain_mm",days=None);history,current=daily_history(rain_all);forecast=noaa_forecast()
+    rain_all=recent_sensor("CT_Rain_mm",days=None);history,uc_current=daily_history(rain_all);forecast=noaa_forecast();current=cimis_current() or uc_current
     data={"location":{"name":"UC Davis Campbell Tract","latitude":LAT,"longitude":LON},"updatedAt":datetime.now(timezone.utc).isoformat(),"current":current,"history":history,"forecast":forecast,"monthly":monthly_comparison(rain_all),"sources":{"observed":"UC Davis Weather & Climate Station archive","forecast":"NOAA / National Weather Service API"}}
     os.makedirs(os.path.dirname(OUT),exist_ok=True)
     with open(OUT,"w") as f:json.dump(data,f,separators=(",",":"))
