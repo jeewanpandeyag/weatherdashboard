@@ -29,7 +29,9 @@ def daily_history(rain_all):
         if not vals:continue
         hi=max(vals)*9/5+32;lo=min(vals)*9/5+32;gdd=max(0,(hi+lo)/2-50)
         rows.append({"date":day,"label":datetime.fromisoformat(day).strftime("%b %-d"),"high":round(hi,1),"low":round(lo,1),"rain":round(by[day]["rainmm"]/25.4,3),"gdd":round(gdd,1),"source":"UC Davis Campbell Tract"})
-    return rows
+    latest_dt,latest_c=max(temps,key=lambda item:item[0])
+    current={"temperatureF":round(latest_c*9/5+32,1),"date":latest_dt.date().isoformat(),"recordedAt":latest_dt.strftime("%Y-%m-%d %H:%M PST")}
+    return rows,current
 def noaa_forecast():
     point=json.loads(fetch(f"https://api.weather.gov/points/{LAT},{LON}"));url=point["properties"]["forecast"]
     periods=json.loads(fetch(url))["properties"]["periods"];by={}
@@ -53,7 +55,7 @@ def monthly_comparison(rain_records):
         rows.append({"month":datetime(2000,month,1).strftime("%b"),"current":round(current,2) if current is not None else None,"historical":round(sum(historic)/len(historic),2) if historic else None,"years":len(historic)})
     return rows
 def main():
-    rain_all=recent_sensor("CT_Rain_mm",days=None);history=daily_history(rain_all);forecast=noaa_forecast();current={"temperatureF":history[-1]["high"],"timestamp":history[-1]["date"]}
+    rain_all=recent_sensor("CT_Rain_mm",days=None);history,current=daily_history(rain_all);forecast=noaa_forecast()
     data={"location":{"name":"UC Davis Campbell Tract","latitude":LAT,"longitude":LON},"updatedAt":datetime.now(timezone.utc).isoformat(),"current":current,"history":history,"forecast":forecast,"monthly":monthly_comparison(rain_all),"sources":{"observed":"UC Davis Weather & Climate Station archive","forecast":"NOAA / National Weather Service API"}}
     os.makedirs(os.path.dirname(OUT),exist_ok=True)
     with open(OUT,"w") as f:json.dump(data,f,separators=(",",":"))
