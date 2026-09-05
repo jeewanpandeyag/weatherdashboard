@@ -21,7 +21,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Fetch UC Davis history and NOAA forecast
+      - name: Fetch CIMIS current conditions, UC Davis history and NOAA forecast
+        env:
+          CIMIS_APP_KEY: ${{ secrets.CIMIS_APP_KEY }}
         run: python scripts/update_weather.py
       - name: Commit refreshed dataset
         run: |
