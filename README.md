@@ -2,17 +2,17 @@
 
 An original agricultural weather dashboard combining:
 
-- **Historical observations:** UC Davis Campbell Tract Weather & Climate Station archive
+- **Current conditions:** CIMIS Station 6 — Davis (hourly temperature, wind speed and direction)\n- **Historical observations:** UC Davis Campbell Tract Weather & Climate Station archive
 - **Forecast:** NOAA / National Weather Service API
 - **Agricultural indicators:** rainfall, temperature, growing degree days (base 50°F), seasonal totals and precipitation probability
 
 ## How it works
 
-`scripts/update_weather.py` downloads the public UC Davis temperature and rainfall archives, aggregates five-minute observations into daily records, requests the NOAA seven-day forecast for Davis, and writes `data/weather.json`.
+`scripts/update_weather.py` requests the latest hourly conditions from CIMIS, downloads the public UC Davis temperature and rainfall archives, aggregates five-minute observations into daily records, requests the NOAA seven-day forecast for Davis, and writes `data/weather.json`.
 
-The GitHub Actions workflow runs every day and can also be launched manually. It refreshes the dataset and deploys this static site to GitHub Pages.
+The GitHub Actions workflow runs hourly and can also be launched manually. It refreshes the dataset and deploys this static site to GitHub Pages.
 
-## Enable GitHub Pages
+## Connect CIMIS\n\nCreate a CIMIS Web API AppKey, then open **Settings → Secrets and variables → Actions → New repository secret**. Use the name `CIMIS_APP_KEY` and paste the AppKey as its value. Never put the key in this repository or share it in chat.\n\nIf the secret is absent or CIMIS is temporarily unavailable, the dashboard falls back to the latest UC Davis archived temperature and labels wind as pending.\n\n## Enable GitHub Pages
 
 Open **Settings → Pages → Build and deployment**, then select **GitHub Actions** as the source. Run **Actions → Update weather dashboard → Run workflow** once to populate and publish the site.
 
