@@ -53,8 +53,9 @@ def cimis_current():
     key=os.getenv("CIMIS_APP_KEY")
     if not key:return None
     today=datetime.now().date();start=today-timedelta(days=1)
-    params=urlencode({"appKey":key,"targets":"6","startDate":start.isoformat(),"endDate":today.isoformat(),"dataItems":"hly-air-tmp,hly-wind-spd,hly-wind-dir","unitOfMeasure":"E"})
-    try:data=json.loads(fetch("https://et.water.ca.gov/api/data?"+params,{"Accept":"application/json"}))
+    params=urlencode({"stationNbrs":"6","startDate":start.isoformat(),"endDate":today.isoformat(),"isHourly":"true","dataItems":"hly-air-tmp,hly-wind-spd,hly-wind-dir","unitOfMeasure":"E"})
+    headers={"Accept":"application/json","Ocp-Apim-Subscription-Key":key}
+    try:data=json.loads(fetch("https://et.water.ca.gov/StationWeb/GetDataByStationNumber?"+params,headers))
     except Exception as exc:
         print("CIMIS request failed:",exc);return None
     records=[]
