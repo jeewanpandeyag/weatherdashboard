@@ -44,7 +44,7 @@ def noaa_forecast():
     for r in by.values():
         if r["high"] is None:r["high"]=r["low"]
         if r["low"] is None:r["low"]=r["high"]
-        r["gdd"]=round(max(0,(r["high"]+r["low"])/2-50),1);r["summary"]=" / ".join(r["summary"]);rows.append(r)
+        r["gdd"]=round(max(0,(r["high"]+r["low"])/2-50),1);r["summary"]=" / ".join(r["summary"]);r["windDirection"]=" / ".join(dict.fromkeys(v for v in r["windDirection"] if v));rows.append(r)
     return rows[:7]
 def compass(degrees):
     names=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"]
