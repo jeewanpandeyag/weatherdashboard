@@ -64,12 +64,14 @@ def cimis_current():
             if record.get("Scope")=="hourly" and record.get("HlyAirTmp",{}).get("Value"):records.append(record)
     if not records:return None
     latest=max(records,key=lambda r:(r.get("Date",""),r.get("Hour","")))
-    def value(name):
-        try:return float(latest.get(name,{}).get("Value"))
+    def value(record,name):
+        try:return float(record.get(name,{}).get("Value"))
         except (TypeError,ValueError):return None
-    temp=value("HlyAirTmp");speed=value("HlyWindSpd");direction=value("HlyWindDir");hour=latest.get("Hour","")
+    temp=value(latest,"HlyAirTmp");speed=value(latest,"HlyWindSpd");direction=value(latest,"HlyWindDir");hour=latest.get("Hour","")
+    today_temps=[value(record,"HlyAirTmp") for record in records if record.get("Date")==today.isoformat()]
+    today_temps=[temp for temp in today_temps if temp is not None]
     clock=(hour[:2]+":"+hour[2:]) if len(hour)==4 else hour
-    return {"temperatureF":round(temp,1),"date":latest["Date"],"recordedAt":latest["Date"]+" "+clock,"windMph":round(speed,1) if speed is not None else None,"windDirectionDeg":round(direction) if direction is not None else None,"windDirection":compass(direction) if direction is not None else None,"source":"CIMIS Station 6 — Davis"}
+    return {"temperatureF":round(temp,1),"date":latest["Date"],"recordedAt":latest["Date"]+" "+clock,"todayHighF":round(max(today_temps),1) if today_temps else None,"todayLowF":round(min(today_temps),1) if today_temps else None,"windMph":round(speed,1) if speed is not None else None,"windDirectionDeg":round(direction) if direction is not None else None,"windDirection":compass(direction) if direction is not None else None,"source":"CIMIS Station 6 — Davis"}
 def monthly_comparison(rain_records):
     totals=defaultdict(float)
     for d,v in rain_records:totals[(d.year,d.month)]+=max(v,0)/25.4
@@ -80,8 +82,12 @@ def monthly_comparison(rain_records):
         rows.append({"month":datetime(2000,month,1).strftime("%b"),"current":round(current,2) if current is not None else None,"historical":round(sum(historic)/len(historic),2) if historic else None,"years":len(historic)})
     return rows
 def main():
-    rain_all=recent_sensor("CT_Rain_mm",days=None);history,uc_current=daily_history(rain_all);forecast=noaa_forecast();current=cimis_current() or uc_current
-    data={"location":{"name":"UC Davis Campbell Tract","latitude":LAT,"longitude":LON},"updatedAt":datetime.now(timezone.utc).isoformat(),"current":current,"history":history,"forecast":forecast,"monthly":monthly_comparison(rain_all),"sources":{"observed":"UC Davis Weather & Climate Station archive","forecast":"NOAA / National Weather Service API"}}
+    rain_all=recent_sensor("CT_Rain_mm",days=None);history,uc_current=daily_history(rain_all);forecast=noaa_forecast();cimis=cimis_current();current=cimis or uc_current
+    if cimis and cimis.get("date")==datetime.now().date().isoformat():
+        for row in history:
+            if row["date"]==cimis["date"] and cimis.get("todayHighF") is not None and cimis.get("todayLowF") is not None:
+                row["high"]=cimis["todayHighF"];row["low"]=cimis["todayLowF"];row["gdd"]=round(max(0,(row["high"]+row["low"])/2-50),1);row["source"]="CIMIS Station 6 — Davis (today so far)"
+    data={"location":{"name":"Davis, California","latitude":LAT,"longitude":LON},"updatedAt":datetime.now(timezone.utc).isoformat(),"current":current,"history":history,"forecast":forecast,"monthly":monthly_comparison(rain_all),"sources":{"current":"CIMIS Station 6 — Davis","observed":"UC Davis Weather & Climate Station archive","forecast":"NOAA / National Weather Service API"}}
     os.makedirs(os.path.dirname(OUT),exist_ok=True)
     with open(OUT,"w") as f:json.dump(data,f,separators=(",",":"))
 if __name__=="__main__":main()
