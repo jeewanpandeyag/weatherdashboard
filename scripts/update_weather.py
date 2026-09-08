@@ -39,7 +39,7 @@ def noaa_forecast():
     for p in periods:
         day=p["startTime"][:10];r=by.setdefault(day,{"date":day,"label":datetime.fromisoformat(day).strftime("%b %-d"),"high":None,"low":None,"rain":0,"pop":0,"summary":[],"windMph":0,"windDirection":[],"source":"NOAA / NWS"})
         temp=p["temperature"] if p["temperatureUnit"]=="F" else p["temperature"]*9/5+32
-        r["high" if p["isDaytime"] else "low"]=round(temp,1);r["pop"]=max(r["pop"],p.get("probabilityOfPrecipitation",{}).get("value") or 0);r["summary"].append(p["shortForecast"]);speeds=[int(v) for v in re.findall(r"\\d+",p.get("windSpeed",""))];r["windMph"]=max(r["windMph"],max(speeds) if speeds else 0);r["windDirection"].append(p.get("windDirection",""))
+        r["high" if p["isDaytime"] else "low"]=round(temp,1);r["pop"]=max(r["pop"],p.get("probabilityOfPrecipitation",{}).get("value") or 0);r["summary"].append(p["shortForecast"]);speeds=[int(v) for v in re.findall(r"\d+",p.get("windSpeed",""))];r["windMph"]=max(r["windMph"],max(speeds) if speeds else 0);r["windDirection"].append(p.get("windDirection",""))
     rows=[]
     for r in by.values():
         if r["high"] is None:r["high"]=r["low"]
