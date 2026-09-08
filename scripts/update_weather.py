@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import csv, io, json, os, tempfile, urllib.request, zipfile
+import csv, io, json, os, re, tempfile, urllib.request, zipfile
 from urllib.parse import urlencode
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -37,9 +37,9 @@ def noaa_forecast():
     point=json.loads(fetch(f"https://api.weather.gov/points/{LAT},{LON}"));url=point["properties"]["forecast"]
     periods=json.loads(fetch(url))["properties"]["periods"];by={}
     for p in periods:
-        day=p["startTime"][:10];r=by.setdefault(day,{"date":day,"label":datetime.fromisoformat(day).strftime("%b %-d"),"high":None,"low":None,"rain":0,"pop":0,"summary":[],"source":"NOAA / NWS"})
+        day=p["startTime"][:10];r=by.setdefault(day,{"date":day,"label":datetime.fromisoformat(day).strftime("%b %-d"),"high":None,"low":None,"rain":0,"pop":0,"summary":[],"windMph":0,"windDirection":[],"source":"NOAA / NWS"})
         temp=p["temperature"] if p["temperatureUnit"]=="F" else p["temperature"]*9/5+32
-        r["high" if p["isDaytime"] else "low"]=round(temp,1);r["pop"]=max(r["pop"],p.get("probabilityOfPrecipitation",{}).get("value") or 0);r["summary"].append(p["shortForecast"])
+        r["high" if p["isDaytime"] else "low"]=round(temp,1);r["pop"]=max(r["pop"],p.get("probabilityOfPrecipitation",{}).get("value") or 0);r["summary"].append(p["shortForecast"]);speeds=[int(v) for v in re.findall(r"\\d+",p.get("windSpeed",""))];r["windMph"]=max(r["windMph"],max(speeds) if speeds else 0);r["windDirection"].append(p.get("windDirection",""))
     rows=[]
     for r in by.values():
         if r["high"] is None:r["high"]=r["low"]
