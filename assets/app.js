@@ -19,7 +19,7 @@ function fieldOutlook(history,forecast,n){
   if((windiest?.windMph||0)>=20)notes.push({tone:'windy',icon:'➤',label:'Wind alert',value:`${windiest.windMph} mph · ${shortDay(windiest)}`});
   else if((payload.current?.windMph||0)>=15)notes.push({tone:'windy',icon:'➤',label:'Wind now',value:`${payload.current.windMph} mph ${payload.current.windDirection||''}`});
  }else{
-  const periodLabel=n===365?'Past year':`Past ${n} days`,peak=history.reduce((a,r)=>!a||r.high>a.high?r:a,null),xx=historybly;
+  const periodLabel=n===365?'Past year':`Past ${n} days`,peak=history.reduce((a,r)=>!a||r.high>a.high?r:a,null);
   const rainfall=history.reduce((sum,r)=>sum+(Number.isFinite(r.rain)?r.rain:0),0),wetDays=history.filter(r=>(r.rain||0)>=.01).length;
   if(badge)badge.textContent=periodLabel;
   if(peak)notes.push({tone:peak.high>=95?'danger':peak.high>=90?'warm':'good',icon:peak.high>=95?'🔥':'☀',label:'Period high',value:`${Math.round(peak.high)}°F · ${shortDate(peak)}`});
