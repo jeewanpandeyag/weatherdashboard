@@ -48,7 +48,7 @@ function lineChart(el,history,forecast,keys,barKey,showWeekday=false){
 }
 function bars(el,rows){
  const compact=window.innerWidth<=620,w=Math.max(300,Math.round(el.clientWidth||1200)),h=compact?310:330,p=compact?{l:32,r:6,t:38,b:36}:{l:44,r:18,t:38,b:40};
- const values=rows.flatMap(r=>[r.current??r.rain,r.historical].filter(Number.isFinite)),max=Math.max(...values,.1),plotH=h-p.t-p.b,slot=(w-p.l-p.r)/12,bw=slot*(compact?.19:.23),gap=compact?9:11;
+ const values=rows.flatMap(r=>[r.current??r.rain,r.historical].filter(Number.isFinite)),max=Math.max(...values,.1),plotH=h-p.t-p.b,slot=(w-p.l-p.r)/12,bw=slot*(compact?.21:.24),gap=compact?3:5;
  let s=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="2026 rainfall compared with historical monthly average">`;
  for(let i=0;i<5;i++){const yy=p.t+i*plotH/4,value=max-i*max/4;s+=`<line class="axis" x1="${p.l}" y1="${yy}" x2="${w-p.r}" y2="${yy}"/><text class="axis-text" x="2" y="${yy+4}">${value.toFixed(1)}″</text>`}
  rows.forEach((r,i)=>{
