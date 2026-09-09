@@ -47,14 +47,14 @@ function lineChart(el,history,forecast,keys,barKey,showWeekday=false){
  el.innerHTML=s+'</svg>'
 }
 function bars(el,rows){
- const compact=window.innerWidth<=620,w=Math.max(300,Math.round(el.clientWidth||1200)),h=compact?310:330,p=compact?{l:32,r:6,t:34,b:36}:{l:44,r:18,t:34,b:40};
- const values=rows.flatMap(r=>[r.current??r.rain,r.historical].filter(Number.isFinite)),max=Math.max(...values,.1),plotH=h-p.t-p.b,slot=(w-p.l-p.r)/12,bw=slot*(compact?.23:.27),gap=compact?3:5;
+ const compact=window.innerWidth<=620,w=Math.max(300,Math.round(el.clientWidth||1200)),h=compact?310:330,p=compact?{l:32,r:6,t:38,b:}:{l:44,r:18,t:38,b:40};
+ const values=rows.flatMap(r=>[r.current??r.rain,r.historical].filter(Number.isFinite)),max=Math.max(...values,.1),plotH=h-p.t-p.b,slot=(w-p.l-p.r)/12,bw=slot*(compact?.19:.23),gap=compact?9:11;
  let s=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="2026 rainfall compared with historical monthly average">`;
  for(let i=0;i<5;i++){const yy=p.t+i*plotH/4,value=max-i*max/4;s+=`<line class="axis" x1="${p.l}" y1="${yy}" x2="${w-p.r}" y2="${yy}"/><text class="axis-text" x="2" y="${yy+4}">${value.toFixed(1)}″</text>`}
  rows.forEach((r,i)=>{
   const center=p.l+(i+.5)*slot,current=r.current??r.rain,historical=r.historical;
-  if(Number.isFinite(current)&&current>0){const bh=Math.max(2,current/max*plotH),top=h-p.b-bh,x=center-bw-gap/2,labelY=Math.max(14,top-9);s+=`<rect x="${x}" y="${top}" width="${bw}" height="${bh}" rx="3" fill="#7c3aed"/>`;if(!compact||current>=.05)s+=`<text class="bar-value" text-anchor="middle" x="${x+bw/2}" y="${labelY}">${current.toFixed(compact?1:2)}</text>`}
-  if(Number.isFinite(historical)&&historical>0){const bh=Math.max(2,historical/max*plotH),top=h-p.b-bh,x=center+gap/2,labelY=Math.max(14,top-9);s+=`<rect x="${x}" y="${top}" width="${bw}" height="${bh}" rx="3" fill="#aeb8b3"/>`;if(!compact||historical>=.05)s+=`<text class="bar-value historical-value" text-anchor="middle" x="${x+bw/2}" y="${labelY}">${historical.toFixed(compact?1:2)}</text>`}
+  if(Number.isFinite(current)&&current>0){const bh=Math.max(2,current/max*plotH),top=h-p.b-bh,x=center-bw-gap/2,labelY=Math.max(15,top-13);s+=`<rect x="${x}" y="${top}" width="${bw}" height="${bh}" rx="3" fill="#7c3aed"/>`;if(!compact||current>=.05)s+=`<text class="bar-value" text-anchor="middle" x="${x+bw/2}" y="${labelY}">${current.toFixed(compact?1:2)}</text>`}
+  if(Number.isFinite(historical)&&historical>0){const bh=Math.max(2,historical/max*plotH),top=h-p.b-bh,x=center+gap/2,labelY=Math.max(15,top-13);s+=`<rect x="${x}" y="${top}" width="${bw}" height="${bh}" rx="3" fill="#aeb8b3"/>`;if(!compact||historical>=.05)s+=`<text class="bar-value historical-value" text-anchor="middle" x="${x+bw/2}" y="${labelY}">${historical.toFixed(compact?1:2)}</text>`}
   s+=`<text class="axis-text date-label" text-anchor="middle" x="${center}" y="${h-10}">${r.month}</text>`
  });
  el.innerHTML=s+'</svg>'
