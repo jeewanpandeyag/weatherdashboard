@@ -108,10 +108,11 @@ def noaa_forecast():
         row=by.setdefault(day,{
             "date":day,"label":datetime.fromisoformat(day).strftime("%b %-d"),
             "high":None,"low":None,"rain":0,"pop":0,"summary":[],
-            "windMph":0,"windDirection":[],"source":"NOAA / NWS"
+            "windMph":0,"windDirection":[],"hasDayForecast":False,"hasNightForecast":False,"source":"NOAA / NWS"
         })
         temp=period["temperature"] if period["temperatureUnit"]=="F" else period["temperature"]*9/5+32
         row["high" if period["isDaytime"] else "low"]=round(temp,1)
+        row["hasDayForecast" if period["isDaytime"] else "hasNightForecast"]=True
         row["pop"]=max(row["pop"],period.get("probabilityOfPrecipitation",{}).get("value") or 0)
         row["summary"].append(period["shortForecast"])
         speeds=[int(v) for v in re.findall(r"\d+",period.get("windSpeed",""))]
