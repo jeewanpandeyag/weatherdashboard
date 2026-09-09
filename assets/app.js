@@ -6,19 +6,18 @@ function californiaToday(){const parts=new Intl.DateTimeFormat('en-US',{timeZone
 
 function fieldOutlook(){
  const list=$('insightList');if(!list)return;
- const today=californiaToday(),forecast=payload.forecast||[],completed=(payload.history||[]).filter(r=>r.date<today);
+ const today=californiaToday(),forecast=payload.forecast||[],completed=(payload.history||[]).filter(r=>r.date<today),shortDay=r=>r?.date?new Date(r.date+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'}):'';
  let dryDays=0;for(let i=completed.length-1;i>=0;i--){if((completed[i].rain||0)>=.01)break;dryDays++}
- const hottest=forecast.reduce((a,r)=>!a||r.high>a.high?r:a,null),wettest=forecast.reduce((a,r)=>!a||(r.pop||0)>(a.pop||0)?r:a,null),windiest=forecast.reduce((a,r)=>!a||(r.windMph||0)>(a.windMph||0)?r:a,null);
- const notes=[];
- if(hottest?.high>=95)notes.push({label:'Heat watch',text:`Highs may reach ${Math.round(hottest.high)}°F on ${dayLabel(hottest,true)}. Consider earlier field work and checking crop water demand.`});
- else if(hottest?.high>=90)notes.push({label:'Warm week',text:`The highest forecast is ${Math.round(hottest.high)}°F on ${dayLabel(hottest,true)}.`});
- if(wettest?.pop>=50)notes.push({label:'Rain likely',text:`Rain probability reaches ${wettest.pop}% on ${dayLabel(wettest,true)}. Review spray and field-work timing.`});
- else if(wettest?.pop>=25)notes.push({label:'Rain possible',text:`The highest rain probability is ${wettest.pop}% on ${dayLabel(wettest,true)}.`});
- else if(dryDays>=14)notes.push({label:'Dry stretch',text:`No measurable rain has been recorded for ${dryDays} completed days; the seven-day rain chance remains low at ${wettest?.pop||0}%.`});
- if((windiest?.windMph||0)>=20)notes.push({label:'Wind watch',text:`NOAA forecasts winds up to ${windiest.windMph} mph on ${dayLabel(windiest,true)}${windiest.windDirection?' from '+windiest.windDirection:''}. Review spraying and field operations.`});
- else if((payload.current?.windMph||0)>=15)notes.push({label:'Wind now',text:`Latest CIMIS wind is ${payload.current.windMph} mph ${payload.current.windDirection||''}.`});
- if(!notes.length)notes.push({label:'No major weather signal',text:'No strong heat, rain or wind threshold is indicated in the current seven-day forecast.'});
- list.replaceChildren(...notes.slice(0,3).map(note=>{const li=document.createElement('li'),strong=document.createElement('strong');strong.textContent=note.label+': ';li.append(strong,document.createTextNode(note.text));return li}));
+ const hottest=forecast.reduce((a,r)=>!a||r.high>a.high?r:a,null),wettest=forecast.reduce((a,r)=>!a||(r.pop||0)>(a.pop||0)?r:a,null),windiest=forecast.reduce((a,r)=>!a||(r.windMph||0)>(a.windMph||0)?r:a,null),notes=[];
+ if(hottest?.high>=95)notes.push({tone:'danger',icon:'🔥',label:'Heat alert',value:`${Math.round(hottest.high)}°F · ${shortDay(hottest)}`});
+ else if(hottest?.high>=90)notes.push({tone:'warm',icon:'☀',label:'Warm week',value:`Peak ${Math.round(hottest.high)}°F · ${shortDay(hottest)}`});
+ if(wettest?.pop>=50)notes.push({tone:'rainy',icon:'☂',label:'Rain likely',value:`${wettest.pop}% · ${shortDay(wettest)}`});
+ else if(wettest?.pop>=25)notes.push({tone:'rainy',icon:'☂',label:'Rain possible',value:`${wettest.pop}% · ${shortDay(wettest)}`});
+ else if(dryDays>=14)notes.push({tone:'dry',icon:'◌',label:'Dry streak',value:`${dryDays} days · Rain ${wettest?.pop||0}%`});
+ if((windiest?.windMph||0)>=20)notes.push({tone:'windy',icon:'➤',label:'Wind alert',value:`${windiest.windMph} mph · ${shortDay(windiest)}`});
+ else if((payload.current?.windMph||0)>=15)notes.push({tone:'windy',icon:'➤',label:'Wind now',value:`${payload.current.windMph} mph ${payload.current.windDirection||''}`});
+ if(!notes.length)notes.push({tone:'good',icon:'✓',label:'Field friendly',value:'No major alerts'});
+ list.replaceChildren(...notes.slice(0,3).map(note=>{const li=document.createElement('li');li.className='insight '+note.tone;const icon=document.createElement('span');icon.className='insight-symbol';icon.textContent=note.icon;const words=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=note.label;small.textContent=note.value;words.append(strong,small);li.append(icon,words);return li}));
 }
 function lineChart(el,history,forecast,keys,barKey,showWeekday=false){
  const rows=[...history,...forecast],compact=window.innerWidth<=620,dense=rows.length>14,w=Math.max(300,Math.round(el.clientWidth||1200)),h=compact?330:350,p=compact?{l:40,r:38,t:52,b:58}:{l:50,r:48,t:52,b:48};
