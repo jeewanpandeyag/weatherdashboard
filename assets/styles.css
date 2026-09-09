@@ -65,3 +65,13 @@
  .outlook ul{grid-template-columns:repeat(auto-fit,minmax(135px,1fr))}
  .outlook li{font-size:11px}
 }
+
+.intro-copy h1{font-size:36px;margin:0 0 7px;letter-spacing:-.025em}
+.intro-copy p{font-size:14px}
+@media(max-width:620px){
+ main{padding-top:18px}
+ .intro{gap:14px;margin-bottom:14px}
+ .intro-copy h1{font-size:30px;margin-bottom:5px}
+ .intro-copy p{font-size:13px}
+ .brand b{font-size:17px}
+}
