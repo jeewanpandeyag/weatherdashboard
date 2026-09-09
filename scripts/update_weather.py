@@ -3,9 +3,10 @@ import csv, io, json, os, re, tempfile, urllib.request, zipfile
 from urllib.parse import urlencode
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__))); OUT=os.path.join(ROOT,"data","weather.json")
-UCD="https://apps.atm.ucdavis.edu/wxdata/data/"; LAT,LON=38.5353,-121.7733
+UCD="https://apps.atm.ucdavis.edu/wxdata/data/"; LAT,LON=38.5353,-121.7733; PACIFIC=ZoneInfo("America/Los_Angeles")
 UA={"User-Agent":"FieldClimate weatherdashboard (github.com/jeewanpandeyag/weatherdashboard)"}
 def fetch(url,headers=None):
     req=urllib.request.Request(url,headers={**UA,**(headers or {})})
@@ -52,7 +53,7 @@ def compass(degrees):
 def cimis_current():
     key=os.getenv("CIMIS_APP_KEY")
     if not key:return None
-    today=datetime.now().date();start=today-timedelta(days=1)
+    today=datetime.now(PACIFIC).date();start=today-timedelta(days=1)
     params=urlencode({"stationNbrs":"6","startDate":start.isoformat(),"endDate":today.isoformat(),"isHourly":"true","dataItems":"hly-air-tmp,hly-wind-spd,hly-wind-dir","unitOfMeasure":"E"})
     headers={"Accept":"application/json","Ocp-Apim-Subscription-Key":key}
     try:data=json.loads(fetch("https://et.water.ca.gov/StationWeb/GetDataByStationNumber?"+params,headers))
@@ -83,7 +84,7 @@ def monthly_comparison(rain_records):
     return rows
 def main():
     rain_all=recent_sensor("CT_Rain_mm",days=None);history,uc_current=daily_history(rain_all);forecast=noaa_forecast();cimis=cimis_current();current=cimis or uc_current
-    if cimis and cimis.get("date")==datetime.now().date().isoformat():
+    if cimis and cimis.get("date")==datetime.now(PACIFIC).date().isoformat():
         for row in history:
             if row["date"]==cimis["date"] and cimis.get("todayHighF") is not None and cimis.get("todayLowF") is not None:
                 row["high"]=cimis["todayHighF"];row["low"]=cimis["todayLowF"];row["gdd"]=round(max(0,(row["high"]+row["low"])/2-50),1);row["source"]="CIMIS Station 6 — Davis (today so far)"
