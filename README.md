@@ -1,4 +1,4 @@
-# FieldClimate — Davis Weather Dashboard
+# Davis AgWeather Dashboard
 
 An agricultural weather dashboard for Davis, California, combining:
 
