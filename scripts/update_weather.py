@@ -9,7 +9,7 @@ ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT=os.path.join(ROOT,"data","weather.json")
 LAT,LON=38.5353,-121.7733
 PACIFIC=ZoneInfo("America/Los_Angeles")
-UA={"User-Agent":"FieldClimate weatherdashboard (github.com/jeewanpandeyag/weatherdashboard)"}
+UA={"User-Agent":"Davis AgWeather dashboard (github.com/jeewanpandeyag/weatherdashboard)"}
 CIMIS_URL="https://et.water.ca.gov/StationWeb/GetDataByStationNumber"
 
 def fetch(url,headers=None):
