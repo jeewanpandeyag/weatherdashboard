@@ -2,13 +2,13 @@
 
 An original agricultural weather dashboard combining:
 
-- **Current conditions:** CIMIS Station 6 — Davis (hourly temperature, wind speed and direction)\n- **Historical observations:** UC Davis Campbell Tract Weather & Climate Station archive
+- **Current conditions:** CIMIS Station 6 — Davis (hourly temperature, wind speed and direction)\n- **Observed history:** CIMIS Station 6 — Davis daily temperature and rainfall
 - **Forecast:** NOAA / National Weather Service API
 - **Agricultural indicators:** rainfall, temperature, growing degree days (base 50°F), seasonal totals and precipitation probability
 
 ## How it works
 
-`scripts/update_weather.py` requests the latest hourly conditions from CIMIS, downloads the public UC Davis temperature and rainfall archives, aggregates five-minute observations into daily records, requests the NOAA seven-day forecast for Davis, and writes `data/weather.json`.
+`scripts/update_weather.py` requests CIMIS Station 6 hourly conditions and daily history, requests the NOAA seven-day forecast for Davis, and writes `data/weather.json`.
 
 The GitHub Actions workflow runs hourly and can also be launched manually. It refreshes the dataset and deploys this static site to GitHub Pages.
 
@@ -19,13 +19,12 @@ Open **Settings → Pages → Build and deployment**, then select **GitHub Actio
 ## Data notes
 
 - Observations and forecasts are stored separately and labeled by source.
-- UC Davis archive values are aggregated from five-minute records.
+- All observed temperature, rainfall, wind and growing degree day values come from CIMIS Station 6.
 - NOAA precipitation values shown by the dashboard are forecast probabilities, not projected rainfall depth.
 - Review source availability and quality flags before using the dashboard for operational decisions.
 
 ## Sources
 
-- [UC Davis Weather & Climate Station](https://atm.ucdavis.edu/weather/uc-davis-weather-climate-station)
 - [NOAA/NWS API documentation](https://www.weather.gov/documentation/services-web-api)
 
 ## License
