@@ -13,3 +13,5 @@
  .metrics article:nth-child(n+3) strong{font-size:17px;white-space:nowrap}
  .metrics article:nth-child(n+3) span{display:none}
 }
+
+.provenance-grid{grid-template-columns:1fr}
