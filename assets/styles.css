@@ -29,3 +29,14 @@
  .download-details .download-group select{width:100%;min-width:0}
  .download-details .download-group button{white-space:nowrap;padding:11px 12px}
 }
+
+.status.ready{display:none}
+.header-actions{display:flex;align-items:center;gap:10px}
+.header-actions .download-details summary{border-color:#527769;background:transparent;color:#e5f0eb;padding:7px 9px;font-size:12px}
+.header-actions .download-details summary::before{font-size:13px}
+.header-actions .download-details .download-group{right:0;left:auto;color:var(--ink)}
+.header-actions .download-details label{font-size:12px;font-weight:700;color:var(--muted)}
+@media(max-width:620px){
+ .header-actions .download-details .download-group{right:0;left:auto}
+ .header-actions .download-details summary{padding:7px 9px}
+}
