@@ -40,3 +40,28 @@
  .header-actions .download-details .download-group{right:0;left:auto}
  .header-actions .download-details summary{padding:7px 9px}
 }
+
+.outlook{display:block;background:#fff;color:var(--ink);border:1px solid var(--line);padding:13px 15px;box-shadow:none}
+.outlook-icon{display:none}
+.outlook-head{align-items:center}
+.outlook h2{font-size:15px;color:var(--ink)}
+.outlook-head span{border:0;background:#f0f4f2;color:var(--muted);font-size:9px;padding:4px 7px}
+.outlook ul{list-style:none;padding:0;margin:9px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.outlook li{margin:0;padding:9px 10px;border-radius:11px;display:flex;align-items:center;gap:8px;font-size:12px;line-height:1.15}
+.outlook li>span:last-child{min-width:0}
+.outlook li strong,.outlook li small{display:block}
+.outlook li strong{font-size:12px;color:inherit}
+.outlook li small{margin-top:3px;font-size:10px;color:inherit;opacity:.82;white-space:nowrap}
+.insight-symbol{width:27px;height:27px;flex:0 0 27px;border-radius:8px;background:rgba(255,255,255,.62);display:grid;place-items:center;font-weight:900}
+.insight.danger{background:#fee2e2;color:#991b1b}
+.insight.warm{background:#fff1db;color:#9a4d08}
+.insight.dry{background:#fef3c7;color:#854d0e}
+.insight.rainy{background:#e0e7ff;color:#4338ca}
+.insight.windy{background:#e0f2fe;color:#075985}
+.insight.good{background:#dcfce7;color:#166534}
+@media(max-width:620px){
+ .outlook{padding:12px}
+ .outlook-head{flex-direction:row;align-items:center}
+ .outlook ul{grid-template-columns:repeat(auto-fit,minmax(135px,1fr))}
+ .outlook li{font-size:11px}
+}
