@@ -11,9 +11,9 @@ function fieldOutlook(history,forecast,n){
  const notes=[];let dryDays=0;for(let i=completed.length-1;i>=0;i--){if((completed[i].rain||0)>=.01)break;dryDays++}
  if(n===7){
   if(badge)badge.textContent='This week';
-  const hottest=forecast.reduce((a,r)=>!a||r.high>a.high?r:a,null),wettest=forecast.reduce((a,r)=>!a||(r.pop||0)>(a.pop||0)?r:a,null),windiest=forecast.reduce((a,r)=>!a||(r.windMph||0)>(a.windMph||0)?r:a,null);
-  if(hottest?.high>=95)notes.push({tone:'danger',icon:'🔥',label:'Heat alert',value:`${Math.round(hottest.high)}°F · ${shortDay(hottest)}`});
-  else if(hottest?.high>=90)notes.push({tone:'warm',icon:'☀',label:'Warm week',value:`Peak ${Math.round(hottest.high)}°F · ${shortDay(hottest)}`});
+  const hottest=[...history,...forecast].reduce((a,r)=>!a||r.high>a.high?r:a,null),hottestIsForecast=forecast.some(r=>r.date===hottest?.date),wettest=forecast.reduce((a,r)=>!a||(r.pop||0)>(a.pop||0)?r:a,null),windiest=forecast.reduce((a,r)=>!a||(r.windMph||0)>(a.windMph||0)?r:a,null);
+  if(hottest?.high>=95)notes.push({tone:'danger',icon:'🔥',label:hottestIsForecast?'Heat alert':'Heat peak',value:`${Math.round(hottest.high)}°F · ${shortDay(hottest)}`});
+  else if(hottest?.high>=90)notes.push({tone:'warm',icon:'☀',label:hottestIsForecast?'Warm ahead':'Week high',value:`${Math.round(hottest.high)}°F · ${shortDay(hottest)}`});
   if(wettest?.pop>=50)notes.push({tone:'rainy',icon:'☂',label:'Rain likely',value:`${wettest.pop}% · ${shortDay(wettest)}`});
   else if(wettest?.pop>=25)notes.push({tone:'rainy',icon:'☂',label:'Rain possible',value:`${wettest.pop}% · ${shortDay(wettest)}`});
   else if(dryDays>=14)notes.push({tone:'dry',icon:'◌',label:'Dry streak',value:`${dryDays} days · Rain ${wettest?.pop||0}%`});
