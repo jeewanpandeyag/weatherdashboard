@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, re, urllib.request
+import json, os, re, time, urllib.error, urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
@@ -12,10 +12,32 @@ PACIFIC=ZoneInfo("America/Los_Angeles")
 UA={"User-Agent":"Davis AgWeather dashboard (github.com/jeewanpandeyag/weatherdashboard)"}
 CIMIS_URL="https://et.water.ca.gov/StationWeb/GetDataByStationNumber"
 
-def fetch(url,headers=None):
+def fetch(url,headers=None,attempts=4):
+    """Fetch an API response, tolerating brief CIMIS/NOAA interruptions."""
     req=urllib.request.Request(url,headers={**UA,**(headers or {})})
-    with urllib.request.urlopen(req,timeout=90) as response:
-        return response.read()
+    for attempt in range(1,attempts+1):
+        try:
+            with urllib.request.urlopen(req,timeout=90) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            # Retrying a bad request or authentication failure only delays a
+            # useful error. Rate limits and server failures are often brief.
+            retryable=error.code in (408,425,429) or error.code>=500
+            if not retryable or attempt==attempts:
+                raise RuntimeError(
+                    f"Weather API request failed with HTTP {error.code} "
+                    f"after {attempt} attempt(s): {url}"
+                ) from error
+        except (urllib.error.URLError,TimeoutError) as error:
+            if attempt==attempts:
+                raise RuntimeError(
+                    f"Weather API request failed after {attempt} attempts: "
+                    f"{url} ({error})"
+                ) from error
+        delay=2**(attempt-1)
+        print(f"Weather API temporarily unavailable; retrying in {delay}s "
+              f"(attempt {attempt+1}/{attempts})")
+        time.sleep(delay)
 
 def field_value(record,name):
     try:
@@ -40,6 +62,16 @@ def cimis_records(start,end,is_hourly,items):
     records=[]
     for provider in data.get("Data",{}).get("Providers",[]):
         records.extend(provider.get("Records",[]))
+    return records
+
+def cimis_daily_records_chunked(start,end,items,chunk_days=180):
+    """Keep daily requests below CIMIS's date-range limit."""
+    records=[]
+    chunk_start=start
+    while chunk_start<=end:
+        chunk_end=min(chunk_start+timedelta(days=chunk_days-1),end)
+        records.extend(cimis_records(chunk_start,chunk_end,False,items))
+        chunk_start=chunk_end+timedelta(days=1)
     return records
 
 def compass(degrees):
@@ -77,7 +109,7 @@ def cimis_current(today):
     }
 
 def cimis_daily_history(today,days=370):
-    records=cimis_records(today-timedelta(days=days-1),today,False,[
+    records=cimis_daily_records_chunked(today-timedelta(days=days-1),today,[
         "day-air-tmp-max","day-air-tmp-min","day-precip"
     ])
     rows=[]
