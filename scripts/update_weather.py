@@ -152,9 +152,14 @@ def noaa_forecast():
         row["windDirection"].append(period.get("windDirection",""))
     rows=[]
     for row in by.values():
-        if row["high"] is None: row["high"]=row["low"]
-        if row["low"] is None: row["low"]=row["high"]
-        row["gdd"]=round(max(0,(row["high"]+row["low"])/2-50),1)
+        # NOAA's final forecast day may include only a daytime or nighttime
+        # period. Keep the missing value null instead of inventing a daily
+        # range by copying the one period into both high and low.
+        row["gdd"]=(
+            round(max(0,(row["high"]+row["low"])/2-50),1)
+            if row["high"] is not None and row["low"] is not None
+            else None
+        )
         row["summary"]=" / ".join(row["summary"])
         row["windDirection"]=" / ".join(dict.fromkeys(v for v in row["windDirection"] if v))
         rows.append(row)
