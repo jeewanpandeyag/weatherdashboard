@@ -11,6 +11,7 @@ LAT,LON=38.5353,-121.7733
 PACIFIC=ZoneInfo("America/Los_Angeles")
 UA={"User-Agent":"Davis AgWeather dashboard (github.com/jeewanpandeyag/weatherdashboard)"}
 CIMIS_URL="https://et.water.ca.gov/StationWeb/GetDataByStationNumber"
+LIVE_STATION_URL="https://api.weather.gov/stations/KEDU/observations/latest"
 
 def fetch(url,headers=None,attempts=4):
     """Fetch an API response, tolerating brief CIMIS/NOAA interruptions."""
@@ -77,6 +78,26 @@ def cimis_daily_records_chunked(start,end,items,chunk_days=180):
 def compass(degrees):
     names=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"]
     return names[round(degrees/22.5)%16]
+
+def noaa_current_observation():
+    properties=json.loads(fetch(LIVE_STATION_URL))["properties"]
+    temperature_c=properties.get("temperature",{}).get("value")
+    wind_kmh=properties.get("windSpeed",{}).get("value")
+    direction=properties.get("windDirection",{}).get("value")
+    timestamp=properties.get("timestamp")
+    if temperature_c is None or not timestamp:
+        raise RuntimeError("NOAA KEDU returned no current temperature")
+    observed=datetime.fromisoformat(timestamp.replace("Z","+00:00")).astimezone(PACIFIC)
+    return {
+        "temperatureF":round(temperature_c*9/5+32,1),
+        "date":observed.date().isoformat(),
+        "recordedAt":observed.strftime("%Y-%m-%d %H:%M"),
+        "windMph":round(wind_kmh/1.609344,1) if wind_kmh is not None else None,
+        "windDirectionDeg":round(direction) if direction is not None else None,
+        "windDirection":compass(direction) if direction is not None else None,
+        "source":"NOAA KEDU — University Airport",
+        "distanceMi":0.9
+    }
 
 def cimis_current(today):
     records=cimis_records(today-timedelta(days=1),today,True,[
@@ -204,6 +225,7 @@ def monthly_comparison(history,today,normals):
 def main():
     today=datetime.now(PACIFIC).date()
     current=cimis_current(today)
+    live=noaa_current_observation()
     history=cimis_daily_history(today)
     if current.get("date")==today.isoformat() and current.get("todayHighF") is not None:
         today_row={
@@ -221,11 +243,13 @@ def main():
     data={
         "location":{"name":"Davis, California","latitude":LAT,"longitude":LON},
         "updatedAt":datetime.now(timezone.utc).isoformat(),
+        "live":live,
         "current":current,
         "history":history,
         "forecast":noaa_forecast(),
         "monthly":monthly_comparison(history,today,normals),
         "sources":{
+            "live":"NOAA KEDU — University Airport",
             "observed":"CIMIS Station 6 — Davis",
             "forecast":"NOAA / National Weather Service API"
         }
