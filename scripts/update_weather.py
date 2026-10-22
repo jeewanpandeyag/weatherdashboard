@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, re, time, urllib.error, urllib.request
+import io, json, os, re, time, urllib.error, urllib.request, zipfile
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
@@ -12,6 +12,7 @@ PACIFIC=ZoneInfo("America/Los_Angeles")
 UA={"User-Agent":"Davis AgWeather dashboard (github.com/jeewanpandeyag/weatherdashboard)"}
 CIMIS_URL="https://et.water.ca.gov/StationWeb/GetDataByStationNumber"
 LIVE_STATION_URL="https://api.weather.gov/stations/KEDU/observations/latest"
+UCD_RAIN_URL="https://apps.atm.ucdavis.edu/wxdata/data/CT_Rain_mm.zip"
 
 def fetch(url,headers=None,attempts=4):
     """Fetch an API response, tolerating brief CIMIS/NOAA interruptions."""
@@ -129,6 +130,26 @@ def cimis_current(today):
         "source":"CIMIS Station 6 — Davis"
     }
 
+def ucd_recent_rain(start,end):
+    """Aggregate the UC Davis Campbell Tract five-minute rain gauge."""
+    totals=defaultdict(float)
+    archive_bytes=fetch(UCD_RAIN_URL)
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+        csv_name=archive.namelist()[0]
+        with archive.open(csv_name) as rows:
+            for raw in rows:
+                try:
+                    _,_,value,timestamp=raw.decode("utf-8").strip().split(",",3)
+                    day=datetime.fromisoformat(timestamp).date()
+                    if day>end:
+                        continue
+                    if day<start:
+                        break
+                    totals[day.isoformat()]+=max(float(value),0)/25.4
+                except (UnicodeDecodeError,ValueError):
+                    continue
+    return {day:round(value,3) for day,value in totals.items()}
+
 def cimis_daily_history(today,days=370):
     records=cimis_daily_records_chunked(today-timedelta(days=days-1),today,[
         "day-air-tmp-max","day-air-tmp-min","day-precip"
@@ -227,6 +248,14 @@ def main():
     current=cimis_current(today)
     live=noaa_current_observation()
     history=cimis_daily_history(today)
+    recent_rain=ucd_recent_rain(today-timedelta(days=14),today)
+    for row in history:
+        if row["date"] in recent_rain:
+            row["rain"]=recent_rain[row["date"]]
+            row["rainSource"]="UC Davis Campbell Tract"
+    if today.isoformat() in recent_rain:
+        current["todayRainIn"]=recent_rain[today.isoformat()]
+        current["rainSource"]="UC Davis Campbell Tract"
     if current.get("date")==today.isoformat() and current.get("todayHighF") is not None:
         today_row={
             "date":today.isoformat(),
@@ -251,6 +280,7 @@ def main():
         "sources":{
             "live":"NOAA KEDU — University Airport",
             "observed":"CIMIS Station 6 — Davis",
+            "rain":"UC Davis Campbell Tract",
             "forecast":"NOAA / National Weather Service API"
         }
     }
