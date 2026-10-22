@@ -13,6 +13,7 @@ UA={"User-Agent":"Davis AgWeather dashboard (github.com/jeewanpandeyag/weatherda
 CIMIS_URL="https://et.water.ca.gov/StationWeb/GetDataByStationNumber"
 LIVE_STATION_URL="https://api.weather.gov/stations/KEDU/observations/latest"
 UCD_RAIN_URL="https://apps.atm.ucdavis.edu/wxdata/data/CT_Rain_mm.zip"
+RAIN_REPORT_STATION="KSAC"
 
 def fetch(url,headers=None,attempts=4):
     """Fetch an API response, tolerating brief CIMIS/NOAA interruptions."""
@@ -150,6 +151,42 @@ def ucd_recent_rain(start,end):
                     continue
     return {day:round(value,3) for day,value in totals.items()}
 
+def noaa_recent_rain_reports(start,end):
+    """Capture light/trace rain reports that a tipping gauge can miss."""
+    start_utc=datetime.combine(start,datetime.min.time(),PACIFIC).astimezone(timezone.utc)
+    end_utc=datetime.combine(end+timedelta(days=1),datetime.min.time(),PACIFIC).astimezone(timezone.utc)
+    query=urlencode({
+        "start":start_utc.isoformat().replace("+00:00","Z"),
+        "end":end_utc.isoformat().replace("+00:00","Z"),
+        "limit":"500"
+    })
+    url=f"https://api.weather.gov/stations/{RAIN_REPORT_STATION}/observations?{query}"
+    features=json.loads(fetch(url)).get("features",[])
+    days=defaultdict(lambda:{"observed":False,"hourly":{}})
+    for feature in features:
+        properties=feature.get("properties",{})
+        timestamp=properties.get("timestamp")
+        if not timestamp:
+            continue
+        observed=datetime.fromisoformat(timestamp.replace("Z","+00:00")).astimezone(PACIFIC)
+        day=observed.date()
+        if day<start or day>end:
+            continue
+        raw=properties.get("rawMessage") or ""
+        present=properties.get("presentWeather") or []
+        rain_code=bool(re.search(r"(?:^|\s)[+-]?(?:SH)?RA(?:\s|$)",raw))
+        rain_code=rain_code or any("rain" in str(item).lower() for item in present)
+        amount=properties.get("precipitationLastHour",{}).get("value")
+        if amount is not None:
+            amount=max(float(amount),0)
+            key=observed.strftime("%Y-%m-%d %H")
+            days[day.isoformat()]["hourly"][key]=max(days[day.isoformat()]["hourly"].get(key,0),amount)
+        days[day.isoformat()]["observed"]|=rain_code or (amount is not None and amount>0)
+    return {
+        day:{"observed":values["observed"],"nearbyIn":round(sum(values["hourly"].values())/25.4,3)}
+        for day,values in days.items()
+    }
+
 def cimis_daily_history(today,days=370):
     records=cimis_daily_records_chunked(today-timedelta(days=days-1),today,[
         "day-air-tmp-max","day-air-tmp-min","day-precip"
@@ -249,10 +286,20 @@ def main():
     live=noaa_current_observation()
     history=cimis_daily_history(today)
     recent_rain=ucd_recent_rain(today-timedelta(days=14),today)
+    try:
+        rain_reports=noaa_recent_rain_reports(today-timedelta(days=14),today)
+    except RuntimeError as error:
+        print(f"NOAA rain occurrence feed unavailable: {error}")
+        rain_reports={}
     for row in history:
         if row["date"] in recent_rain:
             row["rain"]=recent_rain[row["date"]]
             row["rainSource"]="UC Davis Campbell Tract"
+        report=rain_reports.get(row["date"])
+        if report and report["observed"] and row["rain"]<.001:
+            row["rainObserved"]=True
+            row["rainNote"]="Trace/light rain observed nearby"
+            row["rainReportSource"]="NOAA KSAC — Sacramento Executive Airport"
     if today.isoformat() in recent_rain:
         current["todayRainIn"]=recent_rain[today.isoformat()]
         current["rainSource"]="UC Davis Campbell Tract"
@@ -281,6 +328,7 @@ def main():
             "live":"NOAA KEDU — University Airport",
             "observed":"CIMIS Station 6 — Davis",
             "rain":"UC Davis Campbell Tract",
+            "rainOccurrence":"NOAA KSAC — Sacramento Executive Airport",
             "forecast":"NOAA / National Weather Service API"
         }
     }
