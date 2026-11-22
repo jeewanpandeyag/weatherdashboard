@@ -22,6 +22,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Fetch CIMIS observations and NOAA forecast
+        continue-on-error: true
         env:
           CIMIS_APP_KEY: ${{ secrets.CIMIS_APP_KEY }}
         run: python scripts/update_weather.py

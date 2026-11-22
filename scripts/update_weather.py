@@ -15,6 +15,28 @@ LIVE_STATION_URL="https://api.weather.gov/stations/KEDU/observations/latest"
 UCD_RAIN_URL="https://apps.atm.ucdavis.edu/wxdata/data/CT_Rain_mm.zip"
 RAIN_REPORT_STATION="KSAC"
 
+def cached_dataset():
+    """Load the last published dataset for graceful source fallbacks."""
+    try:
+        with open(OUT) as source:
+            data=json.load(source)
+        if data.get("history"):
+            return data
+    except (OSError,ValueError,TypeError):
+        pass
+    return {}
+
+def source_or_cache(name,fetcher,cached_value,stale_sources):
+    """Keep the dashboard running when an upstream weather feed is down."""
+    try:
+        return fetcher()
+    except Exception as error:
+        if cached_value is None:
+            raise
+        print(f"{name} unavailable; using last published data: {error}")
+        stale_sources.append(name)
+        return cached_value
+
 def fetch(url,headers=None,attempts=4):
     """Fetch an API response, tolerating brief CIMIS/NOAA interruptions."""
     req=urllib.request.Request(url,headers={**UA,**(headers or {})})
@@ -282,15 +304,39 @@ def monthly_comparison(history,today,normals):
 
 def main():
     today=datetime.now(PACIFIC).date()
-    current=cimis_current(today)
-    live=noaa_current_observation()
-    history=cimis_daily_history(today)
-    recent_rain=ucd_recent_rain(today-timedelta(days=14),today)
-    try:
-        rain_reports=noaa_recent_rain_reports(today-timedelta(days=14),today)
-    except RuntimeError as error:
-        print(f"NOAA rain occurrence feed unavailable: {error}")
-        rain_reports={}
+    cached=cached_dataset()
+    stale_sources=[]
+    current=source_or_cache(
+        "CIMIS current observations",
+        lambda:cimis_current(today),
+        cached.get("current"),
+        stale_sources
+    )
+    live=source_or_cache(
+        "NOAA KEDU live observation",
+        noaa_current_observation,
+        cached.get("live"),
+        stale_sources
+    )
+    history=source_or_cache(
+        "CIMIS daily history",
+        lambda:cimis_daily_history(today),
+        cached.get("history"),
+        stale_sources
+    )
+    history=[dict(row) for row in history]
+    recent_rain=source_or_cache(
+        "UC Davis rainfall gauge",
+        lambda:ucd_recent_rain(today-timedelta(days=14),today),
+        {},
+        stale_sources
+    )
+    rain_reports=source_or_cache(
+        "NOAA rain occurrence reports",
+        lambda:noaa_recent_rain_reports(today-timedelta(days=14),today),
+        {},
+        stale_sources
+    )
     for row in history:
         if row["date"] in recent_rain:
             row["rain"]=recent_rain[row["date"]]
@@ -315,15 +361,32 @@ def main():
         }
         history=[row for row in history if row["date"]!=today.isoformat()]+[today_row]
         history.sort(key=lambda row:row["date"])
-    normals=cached_cimis_normals() or cimis_monthly_normals(today.year-10,today.year-1)
+    normals=cached_cimis_normals()
+    if not normals:
+        normals=source_or_cache(
+            "CIMIS historical normals",
+            lambda:cimis_monthly_normals(today.year-10,today.year-1),
+            {index+1:row.get("historical") for index,row in enumerate(cached.get("monthly",[]))} or None,
+            stale_sources
+        )
+    forecast=source_or_cache(
+        "NOAA forecast",
+        noaa_forecast,
+        cached.get("forecast"),
+        stale_sources
+    )
     data={
         "location":{"name":"Davis, California","latitude":LAT,"longitude":LON},
         "updatedAt":datetime.now(timezone.utc).isoformat(),
         "live":live,
         "current":current,
         "history":history,
-        "forecast":noaa_forecast(),
+        "forecast":forecast,
         "monthly":monthly_comparison(history,today,normals),
+        "feedStatus":{
+            "usingCachedData":bool(stale_sources),
+            "staleSources":stale_sources
+        },
         "sources":{
             "live":"NOAA KEDU — University Airport",
             "observed":"CIMIS Station 6 — Davis",
