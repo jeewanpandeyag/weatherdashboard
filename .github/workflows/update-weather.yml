@@ -37,8 +37,18 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
-      - uses: actions/deploy-pages@v4
-        id: deployment
+      - name: Deploy GitHub Pages
+        uses: actions/deploy-pages@v4
+        id: deployment_attempt
+        continue-on-error: true
+      - name: Wait for uploaded artifact
+        if: ${{ steps.deployment_attempt.outcome == 'failure' }}
+        run: sleep 15
+      - name: Retry GitHub Pages deployment
+        if: ${{ steps.deployment_attempt.outcome == 'failure' }}
+        uses: actions/deploy-pages@v4
+        id: deployment_retry
+        continue-on-error: true
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment_retry.outputs.page_url || steps.deployment_attempt.outputs.page_url }}
